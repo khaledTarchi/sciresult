@@ -1,0 +1,27 @@
+sciresult comparison report
+status: different (numerical difference)
+actual: name=None dims=(x,) shape=(3,) dtype=<f8
+reference: name=None dims=(x,) shape=(3,) dtype=<f8
+options: rtol=0.0 atol=0.0 equal_nan=False max_examples=5
+
+structural issues: 0
+  structure is compatible
+
+numerical scan: complete (every pair was classified and evaluated)
+  counts: total=3 finite_pairs=3 finite_failures=1 nan_position_mismatches=0 matching_nan_pairs=0 rejected_nan_pairs=0 matching_infinity_pairs=0 infinity_mismatches=0
+  total failures: 1
+  finite population: 3 finite pair(s)
+  max finite absolute error: 1.0 at flat index 2 index=(2,) {x="2"}
+
+examples: 1 shown, cap 5, 1 pair(s) failed
+  failure kinds:
+    finite_tolerance: finite tolerance failure (discrepancy exceeds allowance)
+    infinity: infinity mismatch (signed infinities disagree or pair with finite)
+    nan_policy: NaN-policy rejection (NaN on both sides, equal_nan=False)
+    nan_position: NaN-position mismatch (NaN on exactly one side)
+  example[1] finite_tolerance: flat_index=2 index=(2,) {x="2"} actual=1.0 reference=0.0 absolute_error=1.0 allowed_error=0.0 score=+inf (allowance is zero, so the score is intentionally infinite)
+
+notes:
+  - dimension(s) 'x' have no coordinate variable; their positions are reported as integers
+
+No alignment, interpolation, unit conversion, or input mutation was performed.

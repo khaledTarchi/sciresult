@@ -1,0 +1,21 @@
+sciresult comparison report
+status: different (structural difference; numerical scanning was not performed)
+actual: name=actual dims=(x, y) shape=(2, 3) dtype=<f8
+reference: name=reference dims=(y, x) shape=(3, 2) dtype=<f8
+options: rtol=0.0 atol=0.0 equal_nan=False max_examples=5
+
+structural issues: 2
+  structural[1] dimensions: actual dimensions ('x', 'y') differ from reference dimensions ('y', 'x'); no transposition or renaming was performed
+  structural[2] shape: actual shape (2, 3) differs from reference shape (3, 2); no broadcasting was performed
+
+numerical scan: not performed (structural difference)
+  counts: not available because no numerical scan was performed
+  max finite absolute error: not available
+
+examples: 0 shown, cap 5, no numerical population was scanned
+  no failure examples were retained
+
+notes:
+  - the numerical scan was not performed because the labeled comparison domains differ
+
+No alignment, interpolation, unit conversion, or input mutation was performed.

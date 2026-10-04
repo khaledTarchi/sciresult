@@ -1,0 +1,24 @@
+# Build artefacts and caches. dist/ is produced by `python -m build` and is not
+# committed; the release workflow uploads it as a CI artifact instead.
+dist/
+build/
+*.egg-info/
+
+# Interpreter and tool caches.
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+
+# Benchmark scratch data. memory_probe.py writes memmap fixtures into a
+# temporary directory it removes itself, and the sdist excludes these as well,
+# but an interrupted run on an older checkout could leave some behind.
+*.bin
+
+# Environments and editors.
+.venv/
+venv/
+.idea/
+.vscode/

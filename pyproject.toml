@@ -1,0 +1,129 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sciresult"
+dynamic = ["version"]
+description = "Strict, coordinate-aware comparison of two Xarray DataArray values."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Khaled Tarchi", email = "khaledTarchi@users.noreply.github.com" }]
+keywords = ["xarray", "numpy", "testing", "numerical", "regression", "diagnostics"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
+]
+dependencies = [
+  # Floors are declared from upstream documented minimums and are verified by
+  # the CI matrix. See docs/release.md for exactly which combinations have
+  # actually been executed.
+  "numpy>=1.26",
+  "xarray>=2024.10.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.0",
+  "hypothesis>=6.100",
+]
+dev = [
+  "build>=1.2",
+  "hypothesis>=6.100",
+  "mypy>=1.11",
+  "pytest>=8.0",
+  "ruff>=0.6",
+  "twine>=5.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/khaledTarchi/sciresult"
+Documentation = "https://github.com/khaledTarchi/sciresult/blob/main/docs/quickstart.md"
+Source = "https://github.com/khaledTarchi/sciresult"
+Issues = "https://github.com/khaledTarchi/sciresult/issues"
+Changelog = "https://github.com/khaledTarchi/sciresult/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/sciresult/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sciresult"]
+artifacts = ["src/sciresult/py.typed"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+  "/docs",
+  "/benchmarks",
+  "/README.md",
+  "/CHANGELOG.md",
+  "/CONTRIBUTING.md",
+  "/SECURITY.md",
+  "/LICENSE",
+  "/pyproject.toml",
+]
+# Benchmark scratch data must never ship. memory_probe.py writes memmap
+# fixtures into a temporary directory, and this excludes any stragglers left by
+# an interrupted run or an older checkout.
+exclude = [
+  "**/*.bin",
+  "**/.hypothesis",
+  "**/__pycache__",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W", "F", "I", "N", "UP", "B", "A", "C4", "DTZ", "T20", "SIM",
+  "RET", "ARG", "PTH", "RUF", "PL",
+]
+ignore = [
+  "PLR0911", # a handful of dispatchers legitimately branch on several kinds
+  "PLR0912", # structural comparison is a fixed rule sequence, not a tangle
+  "PLR0913", # report records mirror the documented record shape
+  "PLR0915", # statement limits fight readable rule sequences
+  "PLR2004", # structural issue messages quote established shape and dtype facts
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/oracles.py" = ["ARG001"]
+# Test doubles implement abstract signatures they do not need to use.
+"tests/test_validation.py" = ["ARG001", "ARG002", "ARG003"]
+# Benchmark scripts are command-line tools: reporting to stdout is their purpose.
+"benchmarks/*.py" = ["T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sciresult"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src/sciresult"]
+strict = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+
+[[tool.mypy.overrides]]
+module = ["xarray.*", "pandas.*"]
+ignore_missing_imports = true

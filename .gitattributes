@@ -1,0 +1,18 @@
+# Normalise line endings in the repository, and check them out as LF everywhere.
+# The Windows working copy would otherwise receive CRLF, which makes rendered
+# text fixtures differ from the "\n" that format() produces on every platform.
+* text=auto eol=lf
+
+*.py    text eol=lf
+*.md    text eol=lf
+*.toml  text eol=lf
+*.yml   text eol=lf
+*.txt   text eol=lf
+*.typed text eol=lf
+LICENSE text eol=lf
+
+# Nothing in this project is binary, but be explicit rather than relying on
+# auto-detection if a fixture is ever added.
+*.bin   binary
+*.whl   binary
+*.gz    binary

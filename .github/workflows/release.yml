@@ -1,0 +1,181 @@
+name: Release
+
+# Publication of 0.1.0 is authorised: MIT licence, copyright holder and
+# maintainer Khaled Tarchi, repository https://github.com/khaledTarchi/sciresult.
+# See docs/release.md for the authorisation record and the rollback procedure.
+#
+# This workflow is deliberately manual. The preflight job enforces the release
+# rules mechanically, so they survive future edits to the documentation:
+#
+#   1. The maintainer ticked authorization_confirmed.
+#   2. No PLACEHOLDER_ value remains anywhere in the tracked metadata.
+#   3. A licence is declared in pyproject.toml and named in LICENSE.
+#   4. The requested version matches src/sciresult/__init__.py and is tagged.
+#   5. CHANGELOG.md carries a real date for that version, not "unreleased".
+#   6. The working tree is clean.
+#
+# The upload job additionally requires a reviewer's approval of the pypi
+# environment, so publishing always takes two people.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 0.1.0 (must match src/sciresult/__init__.py)"
+        required: true
+        type: string
+      authorization_confirmed:
+        description: "I confirm a licence is selected and publication is authorised."
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Preflight checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Confirm the owner authorised this release
+        if: ${{ !inputs.authorization_confirmed }}
+        run: |
+          echo "::error::Publication was not confirmed. Re-run with"
+          echo "::error::authorization_confirmed=true to publish this version."
+          exit 1
+
+      - name: Refuse to ship placeholders
+        run: |
+          set -eux
+          if grep -rn "PLACEHOLDER_" pyproject.toml SECURITY.md README.md LICENSE CHANGELOG.md docs/; then
+            echo "::error::Placeholder metadata is still present. Replace every"
+            echo "::error::PLACEHOLDER_ value before publishing. See docs/release.md."
+            exit 1
+          fi
+
+      - name: Refuse to ship without a selected licence
+        run: |
+          set -eux
+          if ! grep -qE '^license[[:space:]]*=' pyproject.toml; then
+            echo "::error::pyproject.toml declares no licence. A licence must be"
+            echo "::error::chosen and recorded before any upload."
+            exit 1
+          fi
+          if ! grep -qiE 'license|licence' LICENSE; then
+            echo "::error::LICENSE does not mention a licence."
+            exit 1
+          fi
+
+      - name: Check the version
+        id: check
+        run: |
+          set -eux
+          declared="$(python -c "import re,pathlib; \
+            print(re.search(r'__version__ = \"([^\"]+)\"', \
+            pathlib.Path('src/sciresult/__init__.py').read_text()).group(1))")"
+          requested="${{ inputs.version }}"
+          test "$declared" = "$requested"
+          git rev-parse "v${requested}" >/dev/null
+          echo "version=${declared}" >> "$GITHUB_OUTPUT"
+
+      - name: Require a dated changelog entry
+        run: |
+          set -eux
+          version="${{ inputs.version }}"
+          grep -qE "^## \[${version}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md
+          if grep -qE "^## \[${version}\] - unreleased" CHANGELOG.md; then
+            echo "::error::The changelog entry for ${version} is still 'unreleased'."
+            exit 1
+          fi
+
+      - name: Confirm the working tree is clean
+        run: |
+          set -eux
+          test -z "$(git status --porcelain)"
+
+  build:
+    name: Build and verify
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+
+      - name: Test on the exact release
+        run: |
+          python -m pip install -e ".[test,dev]"
+          python -m ruff check src tests benchmarks
+          python -m ruff format --check src tests benchmarks
+          python -m mypy src
+          python -m pytest
+
+      - name: Build
+        run: python -m build
+
+      - name: Check artifacts
+        run: |
+          set -eux
+          python -m twine check --strict dist/*
+          ls -l dist/
+          python -m zipfile --list dist/*.whl
+          tar -tzf dist/*.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: [preflight, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The pypi environment must have required reviewers configured, so the
+    # upload needs a second person's approval even when the workflow was
+    # dispatched manually.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sciresult
+    permissions:
+      # id-token is required for trusted publishing; contents stays read-only.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-dist
+          path: dist/
+
+      - name: Final guard
+        run: |
+          set -eux
+          test "$(ls dist/*.whl | wc -l)" -eq 1
+          test "$(ls dist/*.tar.gz | wc -l)" -eq 1
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Trusted publishing, no long-lived token. The PyPI side must already
+          # have this repository and workflow configured.
+          attestations: true
+          verbose: true

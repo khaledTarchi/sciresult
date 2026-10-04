@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: py${{ matrix.python }} ${{ matrix.os }} ${{ matrix.dependencies }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.11", "3.12", "3.13"]
+        dependencies: ["lowest", "highest"]
+        exclude:
+          # Keep the matrix affordable: the full cross product runs on Linux,
+          # and one representative job per other operating system checks that
+          # the code is not accidentally POSIX-only. Expand the matrix above
+          # to widen support; see docs/release.md for what has been verified.
+          - os: macos-latest
+            python: "3.11"
+          - os: macos-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.11"
+          - os: windows-latest
+            python: "3.13"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test,dev]${{ matrix.dependencies == 'lowest' && ',numpy==1.26,xarray==2024.10.0' || '' }}"
+
+      - name: Lint
+        run: python -m ruff check src tests benchmarks
+
+      - name: Format check
+        run: python -m ruff format --check src tests benchmarks
+
+      - name: Type check
+        run: python -m mypy src
+
+      - name: Test
+        run: python -m pytest
+
+  build:
+    name: Build and check artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+
+      # Uses isolation on purpose, unlike the local no-isolation build in
+      # docs/release.md. Isolation is what proves the build backend constraint
+      # is sufficient on its own.
+      - name: Build
+        run: python -m build
+
+      - name: Check artifacts
+        run: python -m twine check --strict dist/*
+
+      - name: Inspect contents
+        run: |
+          set -eux
+          ls -l dist/
+          test "$(ls dist/*.whl | wc -l)" -eq 1
+          test "$(ls dist/*.tar.gz | wc -l)" -eq 1
+          python -m zipfile --list dist/*.whl
+          tar -tzf dist/*.tar.gz
+
+      - name: Install the wheel outside the source tree
+        run: |
+          python -m venv /tmp/wheel-check
+          /tmp/wheel-check/bin/python -m pip install --upgrade pip
+          /tmp/wheel-check/bin/python -m pip install dist/*.whl
+          cd /tmp
+          /tmp/wheel-check/bin/python -c "
+          import sciresult, pathlib
+          print('version', sciresult.__version__)
+          print('py.typed', (pathlib.Path(sciresult.__file__).parent / 'py.typed').is_file())
+          import xarray as xr, numpy as np
+          a = xr.DataArray(np.array([1.0, 2.0]), dims='x')
+          report = sciresult.compare(a, a, rtol=0.0, atol=0.0)
+          assert report.status is sciresult.ComparisonStatus.MATCH
+          print('fresh-interpreter compare OK')
+          "
+
+      - name: Benchmarks from the installed wheel
+        run: |
+          /tmp/wheel-check/bin/python -m pip install numpy xarray
+          /tmp/wheel-check/bin/python benchmarks/compare_arrays.py --size 100000
+          /tmp/wheel-check/bin/python benchmarks/memory_probe.py --size 100000
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error

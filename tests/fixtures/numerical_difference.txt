@@ -1,0 +1,24 @@
+sciresult comparison report
+status: different (numerical difference)
+actual: name=model_v2 dims=(t,) shape=(5,) dtype=<f8
+reference: name=model_v1 dims=(t,) shape=(5,) dtype=<f8
+options: rtol=1e-09 atol=0.0 equal_nan=False max_examples=5
+
+structural issues: 0
+  structure is compatible
+
+numerical scan: complete (every pair was classified and evaluated)
+  counts: total=5 finite_pairs=5 finite_failures=1 nan_position_mismatches=0 matching_nan_pairs=0 rejected_nan_pairs=0 matching_infinity_pairs=0 infinity_mismatches=0
+  total failures: 1
+  finite population: 5 finite pair(s)
+  max finite absolute error: 9.999999983634211e-08 at flat index 2 index=(2,) {t="30.0"}
+
+examples: 1 shown, cap 5, 1 pair(s) failed
+  failure kinds:
+    finite_tolerance: finite tolerance failure (discrepancy exceeds allowance)
+    infinity: infinity mismatch (signed infinities disagree or pair with finite)
+    nan_policy: NaN-policy rejection (NaN on both sides, equal_nan=False)
+    nan_position: NaN-position mismatch (NaN on exactly one side)
+  example[1] finite_tolerance: flat_index=2 index=(2,) {t="30.0"} actual=3.0000001 reference=3.0 absolute_error=9.999999983634211e-08 allowed_error=3.0000000000000004e-09 score=33.3333332787807
+
+No alignment, interpolation, unit conversion, or input mutation was performed.

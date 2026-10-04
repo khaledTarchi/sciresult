@@ -1,0 +1,19 @@
+sciresult comparison report
+status: match (the supported comparison passed)
+actual: name=run_a dims=(t,) shape=(4,) dtype=<f8
+reference: name=run_b dims=(t,) shape=(4,) dtype=<f8
+options: rtol=1e-07 atol=1e-12 equal_nan=False max_examples=5
+
+structural issues: 0
+  structure is compatible
+
+numerical scan: complete (every pair was classified and evaluated)
+  counts: total=4 finite_pairs=4 finite_failures=0 nan_position_mismatches=0 matching_nan_pairs=0 rejected_nan_pairs=0 matching_infinity_pairs=0 infinity_mismatches=0
+  total failures: 0
+  finite population: 4 finite pair(s)
+  max finite absolute error: 0.0 at flat index 0 index=(0,) {t="0.0"}
+
+examples: 0 shown, cap 5, no pair failed
+  no failure examples were retained
+
+No alignment, interpolation, unit conversion, or input mutation was performed.
